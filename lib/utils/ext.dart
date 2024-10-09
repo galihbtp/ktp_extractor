@@ -39,8 +39,7 @@ extension TextLineExt on RecognizedText {
 
 extension StringExtension on String {
   String filterNumbersOnly() {
-    final String corrected = this
-        .replaceAll('O', '0')
+    final String corrected = replaceAll('O', '0')
         .replaceAll('o', '0')
         .replaceAll('I', '1')
         .replaceAll('l', '1')
@@ -79,8 +78,7 @@ extension StringExtension on String {
   }
 
   String filterNumberToAlphabet() {
-    return this
-        .replaceAll('0', 'O')
+    return replaceAll('0', 'O')
         .replaceAll('1', 'I')
         .replaceAll('4', 'A')
         .replaceAll('5', 'S')
@@ -89,14 +87,20 @@ extension StringExtension on String {
   }
 
   String filterAlphabetToNumber() {
-    return this
-        .replaceAll('O', '0')
-        .replaceAll('D', '0')
+    return replaceAll('O', '0')
+        .replaceAll('o', '0')
         .replaceAll('I', '1')
-        .replaceAll('A', '4')
+        .replaceAll('l', '1')
+        .replaceAll('B', '8')
+        .replaceAll('b', '6')
         .replaceAll('S', '5')
-        .replaceAll('T', '7')
-        .replaceAll('B', '8');
+        .replaceAll('Z', '2')
+        .replaceAll('z', '2')
+        .replaceAll('D', '0')
+        .replaceAll('A', '4')
+        .replaceAll('e', '2')
+        .replaceAll('L', '6')
+        .replaceAll('T', '7');
   }
 
   String? correctWord(List<String> expectedWords, {bool safetyBack = false}) {
