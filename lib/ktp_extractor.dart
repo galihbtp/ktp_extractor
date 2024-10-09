@@ -10,11 +10,14 @@ import 'models/ktp_model.dart';
 
 export 'models/ktp_model.dart';
 
+/// A utility class for extracting information from KTP (Indonesian ID card) images.
 class KtpExtractor {
   static const String _genderKey = 'gender';
   static const String _religionKey = 'religion';
   static const String _maritalKey = 'marital';
   static const String _nationalityKey = 'nationality';
+
+  /// A map of expected words for certain fields to assist in data correction.
   static final Map<String, List<String>> _expectedWords = {
     _genderKey: ['LAKI-LAKI', 'PEREMPUAN'],
     _religionKey: ['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KHONGHUCU'],
@@ -22,26 +25,37 @@ class KtpExtractor {
     _nationalityKey: ['WNI', 'WNA'],
   };
 
+  /// Crops the KTP area from the provided image using object detection.
+  ///
+  /// This method uses a custom TensorFlow Lite model to detect and crop the KTP
+  /// (Indonesian ID card) area from the given image. It returns a [File] containing
+  /// the cropped image or `null` if no KTP is detected.
+  ///
+  /// [imageFile]: The image file containing the KTP.
   static Future<File?> cropImageForKtp(File imageFile) async {
     final modelPath =
         await getAssetPath('packages/ktp_extractor/assets/custom_models/object_labeler.tflite');
+
     final options = LocalObjectDetectorOptions(
       mode: DetectionMode.single,
       modelPath: modelPath,
       classifyObjects: true,
       multipleObjects: true,
     );
+
     final ObjectDetector detector = ObjectDetector(options: options);
     final InputImage inputImage = InputImage.fromFile(imageFile);
     final result = await detector.processImage(inputImage);
 
     File? imageCropped;
 
+    // Iterate over detected objects to find the KTP.
     for (final object in result) {
       if (kDebugMode) {
-        print('object found : ${object.labels.map((e) => e.text)}');
+        print('Object found: ${object.labels.map((e) => e.text)}');
       }
       if (object.labels.firstOrNull?.text == "Driver's license") {
+        // Crop the image to the detected KTP area.
         imageCropped = await cropImage(File(inputImage.filePath!), object);
         break;
       }
@@ -51,6 +65,12 @@ class KtpExtractor {
     return imageCropped;
   }
 
+  /// Extracts KTP information from the provided image file.
+  ///
+  /// This method performs text recognition on the image to extract
+  /// various fields from the KTP, such as NIK, name, birth date, etc.
+  ///
+  /// [imageFile]: The image file of the KTP.
   static Future<KtpModel> extractKtp(File imageFile) async {
     final TextRecognizer recognizer = TextRecognizer();
     final InputImage inputImage = InputImage.fromFile(imageFile);
@@ -60,6 +80,12 @@ class KtpExtractor {
     return extractFromOcr(recognizedText);
   }
 
+  /// Extracts KTP information from recognized text.
+  ///
+  /// This method parses the recognized text from OCR to extract
+  /// KTP fields and returns a [KtpModel] containing the extracted data.
+  ///
+  /// [recognizedText]: The recognized text from OCR.
   static KtpModel extractFromOcr(RecognizedText recognizedText) {
     String? nik;
     String? name;
@@ -78,55 +104,59 @@ class KtpExtractor {
     String? validUntil;
 
     if (kDebugMode) {
-      print('result text : ${recognizedText.text}');
+      print('Result text: ${recognizedText.text}');
     }
 
+    // Iterate over text blocks and lines to extract information.
     for (final block in recognizedText.blocks) {
       for (final line in block.lines) {
         final String text = line.text;
-        // switch (line.text.toLowerCase()) {
-        //   case 'nik':
-        //     {
+
+        // Extract NIK (Identity Number).
         if (nik == null && text.filterNumbersOnly().length == 16) {
           nik = text.filterNumbersOnly();
           if (kDebugMode) {
-            print('Nik Found : ${line.text}');
-            print('Nik Found filtered : $nik');
+            print('NIK Found: ${line.text}');
+            print('NIK Filtered: $nik');
           }
         }
         if (nik == null && text.toLowerCase().startsWith('nik')) {
           final lineText = recognizedText.findAndClean(line, 'NIK');
           nik = lineText?.filterNumbersOnly().removeAlphabet();
           if (kDebugMode) {
-            print('text : $text');
-            print('lineText : $lineText');
-            print('lineText Filtered : $nik');
+            print('Text: $text');
+            print('Line Text: $lineText');
+            print('Line Text Filtered: $nik');
           }
         }
+
+        // Extract Name.
         if (text.toLowerCase().startsWith('nama')) {
           final lineText = recognizedText.findAndClean(line, 'nama')?.filterNumberToAlphabet();
           name = lineText;
           if (kDebugMode) {
-            print('text ; $text');
-            print('lineText text : ${lineText}');
+            print('Text: $text');
+            print('Line Text: $lineText');
           }
         }
+
+        // Extract Place and Date of Birth.
         if (text.toLowerCase().contains(RegExp('tempat')) &&
             text.toLowerCase().contains(RegExp('lahir'))) {
           if (kDebugMode) {
-            print('text ; $text');
+            print('Text: $text');
           }
           String? lineText = recognizedText.findAndClean(line, 'tempat/tgl lahir');
           if (lineText != null) {
             lineText = lineText.cleanse('tempat');
             lineText = lineText.cleanse('tgl lahir');
             if (lineText.split('/').isNotEmpty) {
-              lineText.replaceAll('/', '');
+              lineText = lineText.replaceAll('/', '');
             }
           }
           final List<String> splitBirth = lineText?.split(',') ?? [];
           if (kDebugMode) {
-            print('split tempat lahir : $splitBirth');
+            print('Split Place of Birth: $splitBirth');
           }
           if (splitBirth.isNotEmpty) {
             placeBirth = splitBirth[0].filterNumberToAlphabet();
@@ -135,9 +165,11 @@ class KtpExtractor {
             }
           }
           if (kDebugMode) {
-            print('lineText text : ${lineText}');
+            print('Line Text: $lineText');
           }
         }
+
+        // Extract Gender.
         if (text.toLowerCase().startsWith('jenis kelamin')) {
           final lineText = recognizedText
               .findAndClean(line, 'jenis kelamin')
@@ -145,35 +177,39 @@ class KtpExtractor {
               .correctWord(_expectedWords[_genderKey]!);
           gender = lineText;
           if (kDebugMode) {
-            print('text ; $text');
-            print('lineText text : ${lineText}');
+            print('Text: $text');
+            print('Line Text: $lineText');
           }
         }
+
+        // Extract Address.
         if (text.toLowerCase().startsWith('alamat')) {
           final lineText = recognizedText.findAndClean(line, 'alamat');
           address = lineText;
           if (kDebugMode) {
-            print('text ; $text');
-            print('lineText text : ${lineText}');
+            print('Text: $text');
+            print('Line Text: $lineText');
           }
         }
+
+        // Extract RT/RW (Neighborhood and Hamlet numbers).
         if (text.toLowerCase().contains(RegExp('rt')) &&
             text.toLowerCase().contains(RegExp('rw'))) {
           if (kDebugMode) {
-            print('text ; $text');
+            print('Text: $text');
           }
           String? lineText = recognizedText.findAndClean(line, 'RTRW');
           if (lineText != null) {
             lineText = lineText.cleanse('rt');
             lineText = lineText.cleanse('rw');
             if (lineText.split('/').length == 2) {
-              lineText.replaceFirst('/', '');
+              lineText = lineText.replaceFirst('/', '');
             }
           }
           final List<String> splitRtRw =
               lineText?.filterAlphabetToNumber().removeAlphabet().split('/') ?? [];
           if (kDebugMode) {
-            print('split rt rw : $splitRtRw');
+            print('Split RT/RW: $splitRtRw');
           }
           if (splitRtRw.isNotEmpty) {
             rt = splitRtRw[0];
@@ -187,89 +223,105 @@ class KtpExtractor {
             }
           }
           if (kDebugMode) {
-            print('lineText text : ${lineText}');
+            print('Line Text: $lineText');
           }
         }
+
+        // Extract Sub-District.
         if (text.toLowerCase().contains(RegExp('desa'))) {
           final lineText = recognizedText.findAndClean(line, 'kel/desa');
           subDistrict = lineText?.filterNumberToAlphabet();
           if (kDebugMode) {
-            print('text ; $text');
-            print('lineText text : ${lineText}');
+            print('Text: $text');
+            print('Line Text: $lineText');
           }
         }
+
+        // Extract District.
         if (text.toLowerCase().startsWith('kecamatan')) {
           final lineText = recognizedText.findAndClean(line, 'kecamatan');
           district = lineText?.filterNumberToAlphabet();
           if (kDebugMode) {
-            print('text ; $text');
-            print('lineText text : ${lineText}');
+            print('Text: $text');
+            print('Line Text: $lineText');
           }
         }
+
+        // Extract Religion.
         if (text.toLowerCase().startsWith('agama')) {
           final lineText = recognizedText.findAndClean(line, 'agama');
           religion = lineText?.filterNumberToAlphabet().correctWord(_expectedWords[_religionKey]!);
           if (kDebugMode) {
-            print('text ; $text');
-            print('lineText text : ${lineText}');
+            print('Text: $text');
+            print('Line Text: $lineText');
           }
         }
+
+        // Extract Marital Status.
         if (text.toLowerCase().startsWith('status perkawinan')) {
           final lineText = recognizedText.findAndClean(line, 'status perkawinan');
           marital = lineText?.filterNumberToAlphabet().correctWord(_expectedWords[_maritalKey]!);
           if (kDebugMode) {
-            print('text ; $text');
-            print('lineText text : ${lineText}');
+            print('Text: $text');
+            print('Line Text: $lineText');
           }
         }
+
+        // Extract Occupation.
         if (text.toLowerCase().startsWith('pekerjaan')) {
           final lineText = recognizedText.findAndClean(line, 'pekerjaan');
           occupation = lineText?.filterNumberToAlphabet();
           if (kDebugMode) {
-            print('text ; $text');
-            print('lineText text : ${lineText}');
+            print('Text: $text');
+            print('Line Text: $lineText');
           }
         }
+
+        // Extract Nationality.
         if (text.toLowerCase().startsWith('kewarganegaraan')) {
           final lineText = recognizedText.findAndClean(line, 'kewarganegaraan');
           nationality =
               lineText?.filterNumberToAlphabet().correctWord(_expectedWords[_nationalityKey]!);
           if (kDebugMode) {
-            print('text ; $text');
-            print('lineText text : ${lineText}');
+            print('Text: $text');
+            print('Line Text: $lineText');
           }
         }
+
+        // Extract Valid Until date.
         if (text.toLowerCase().startsWith('berlaku hingga')) {
           final lineText = recognizedText.findAndClean(line, 'berlaku hingga');
           validUntil = lineText?.filterNumberToAlphabet();
           if (kDebugMode) {
-            print('text ; $text');
-            print('lineText text : ${lineText}');
+            print('Text: $text');
+            print('Line Text: $lineText');
           }
         }
       }
     }
+
     if (kDebugMode) {
       print('========================================');
-
       print('=============== RESULT =================');
-      print('NIK : $nik');
-      print('Name : $name');
-      print('BirthDay : $birthDay');
-      print('Place Of Birth : $placeBirth');
-      print('Gender : $gender');
-      print('address : $address');
-      print('RT/RW : $rt / $rw');
-      print('SubDistrict : $subDistrict');
-      print('District : $district');
-      print('Religion : $religion');
-      print('Marital : $marital');
-      print('Occupation : $occupation');
-      print('Nationality : $nationality');
-      print('Valid Until : $validUntil');
+      print('NIK: $nik');
+      print('Name: $name');
+      print('Birth Day: $birthDay');
+      print('Place of Birth: $placeBirth');
+      print('Gender: $gender');
+      print('Address: $address');
+      print('RT/RW: $rt / $rw');
+      print('Sub-District: $subDistrict');
+      print('District: $district');
+      print('Religion: $religion');
+      print('Marital Status: $marital');
+      print('Occupation: $occupation');
+      print('Nationality: $nationality');
+      print('Valid Until: $validUntil');
       print('============= END RESULT ===============');
       print('========================================');
     }
+
+    // Return a KtpModel containing the extracted information.
     return KtpModel(
       address: address,
       district: district,
