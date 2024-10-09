@@ -3,6 +3,8 @@ import 'package:equatable/equatable.dart';
 class KtpModel extends Equatable {
   final String? nik;
   final String? name;
+  final String? birthDay;
+  final String? placeBirth;
   final String? gender;
   final String? address;
   final String? rt;
@@ -18,6 +20,8 @@ class KtpModel extends Equatable {
   const KtpModel({
     this.nik,
     this.name,
+    this.birthDay,
+    this.placeBirth,
     this.gender,
     this.address,
     this.rt,
@@ -33,18 +37,20 @@ class KtpModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        this.nik,
-        this.name,
-        this.gender,
-        this.address,
-        this.rt,
-        this.rw,
-        this.subDistrict,
-        this.district,
-        this.religion,
-        this.marital,
-        this.occupation,
-        this.nationality,
-        this.validUntil,
+        nik,
+        name,
+        birthDay,
+        placeBirth,
+        gender,
+        address,
+        rt,
+        rw,
+        subDistrict,
+        district,
+        religion,
+        marital,
+        occupation,
+        nationality,
+        validUntil,
       ];
 }

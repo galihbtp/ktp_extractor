@@ -63,6 +63,8 @@ class KtpExtractor {
   static KtpModel extractFromOcr(RecognizedText recognizedText) {
     String? nik;
     String? name;
+    String? placeBirth;
+    String? birthDay;
     String? gender;
     String? address;
     String? rt;
@@ -106,6 +108,33 @@ class KtpExtractor {
           name = lineText;
           if (kDebugMode) {
             print('text ; $text');
+            print('lineText text : ${lineText}');
+          }
+        }
+        if (text.toLowerCase().contains(RegExp('tempat')) &&
+            text.toLowerCase().contains(RegExp('lahir'))) {
+          if (kDebugMode) {
+            print('text ; $text');
+          }
+          String? lineText = recognizedText.findAndClean(line, 'tempat/tgl lahir');
+          if (lineText != null) {
+            lineText = lineText.cleanse('tempat');
+            lineText = lineText.cleanse('tgl lahir');
+            if (lineText.split('/').isNotEmpty) {
+              lineText.replaceAll('/', '');
+            }
+          }
+          final List<String> splitBirth = lineText?.split(',') ?? [];
+          if (kDebugMode) {
+            print('split tempat lahir : $splitBirth');
+          }
+          if (splitBirth.isNotEmpty) {
+            placeBirth = splitBirth[0].filterNumberToAlphabet();
+            if (splitBirth.length > 1) {
+              birthDay = splitBirth[1].filterAlphabetToNumber();
+            }
+          }
+          if (kDebugMode) {
             print('lineText text : ${lineText}');
           }
         }
@@ -226,6 +255,8 @@ class KtpExtractor {
       print('=============== RESULT =================');
       print('NIK : $nik');
       print('Name : $name');
+      print('BirthDay : $birthDay');
+      print('Place Of Birth : $placeBirth');
       print('Gender : $gender');
       print('address : $address');
       print('RT/RW : $rt / $rw');
@@ -245,6 +276,8 @@ class KtpExtractor {
       gender: gender,
       marital: marital,
       name: name,
+      birthDay: birthDay,
+      placeBirth: placeBirth,
       nationality: nationality,
       nik: nik,
       occupation: occupation,
