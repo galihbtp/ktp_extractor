@@ -1,7 +1,8 @@
 name: ktp_extractor
 description: "A new Flutter plugin project."
 version: 0.0.1
-homepage:
+homepage: https://github.com/Irfan234-afif/ktp_extractor
+repository: https://github.com/Irfan234-afif/ktp_extractor
 
 environment:
   sdk: '>=3.4.1 <4.0.0'
