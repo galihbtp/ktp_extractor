@@ -1,5 +1,5 @@
 name: ktp_extractor
-description: "A new Flutter plugin project."
+description: "A utility class for extracting information from KTP (Indonesian ID card) images."
 version: 0.0.1
 homepage: https://github.com/Irfan234-afif/ktp_extractor
 repository: https://github.com/Irfan234-afif/ktp_extractor
