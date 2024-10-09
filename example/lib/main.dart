@@ -23,7 +23,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   ImagePicker? _imagePicker;
   File? _image;
-  String? _text;
+  KtpModel? _ktpModel;
 
   @override
   void initState() {
@@ -66,10 +66,66 @@ class _MyAppState extends State<MyApp> {
               onPressed: () => _getImage(ImageSource.camera),
             ),
           ),
-          if (_text != null)
-            Text(
-              _text!,
-              maxLines: null,
+          if (_ktpModel != null)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'NIK : ${_ktpModel!.nik}',
+                    maxLines: null,
+                  ),
+                  Text(
+                    'Nama : ${_ktpModel!.name}',
+                    maxLines: null,
+                  ),
+                  Text(
+                    'Tempat Lahir : ${_ktpModel!.placeBirth}',
+                    maxLines: null,
+                  ),
+                  Text(
+                    'Tanggal Lahir : ${_ktpModel!.birthDay}',
+                    maxLines: null,
+                  ),
+                  Text(
+                    'Alamat : ${_ktpModel!.address}',
+                    maxLines: null,
+                  ),
+                  Text(
+                    '\t\t\tRT / RW : ${_ktpModel!.rt} / ${_ktpModel!.rw}',
+                    maxLines: null,
+                  ),
+                  Text(
+                    '\t\t\tKel/Desa : ${_ktpModel!.subDistrict}',
+                    maxLines: null,
+                  ),
+                  Text(
+                    '\t\t\tKecamatan : ${_ktpModel!.district}',
+                    maxLines: null,
+                  ),
+                  Text(
+                    'Agama : ${_ktpModel!.religion}',
+                    maxLines: null,
+                  ),
+                  Text(
+                    'Status Perkawinan : ${_ktpModel!.marital}',
+                    maxLines: null,
+                  ),
+                  Text(
+                    'Pekerjaan : ${_ktpModel!.occupation}',
+                    maxLines: null,
+                  ),
+                  Text(
+                    'Kewarganegaraan : ${_ktpModel!.nationality}',
+                    maxLines: null,
+                  ),
+                  Text(
+                    'Berlaku Hingga : ${_ktpModel!.validUntil}',
+                    maxLines: null,
+                  ),
+                ],
+              ),
             ),
         ],
       ),
@@ -79,7 +135,7 @@ class _MyAppState extends State<MyApp> {
   Future _getImage(ImageSource source) async {
     setState(() {
       _image = null;
-      _text = null;
+      _ktpModel = null;
     });
     final pickedFile = await _imagePicker?.pickImage(source: source);
     if (pickedFile != null) {
@@ -90,7 +146,7 @@ class _MyAppState extends State<MyApp> {
   Future _getImageAsset() async {
     setState(() {
       _image = null;
-      _text = null;
+      _ktpModel = null;
     });
     final manifestContent = await rootBundle.loadString('AssetManifest.json');
     final Map<String, dynamic> manifestMap = json.decode(manifestContent);
@@ -151,7 +207,7 @@ class _MyAppState extends State<MyApp> {
   Future _processFile(String path) async {
     _image = await KtpExtractor.cropImageForKtp(File(path));
     _image ??= File(path);
-    _text = (await KtpExtractor.extractKtp(_image!)).toString();
+    _ktpModel = await KtpExtractor.extractKtp(_image!);
     setState(() {});
     // _path = path;
     // final inputImage = InputImage.fromFilePath(path);
