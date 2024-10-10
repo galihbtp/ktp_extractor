@@ -97,6 +97,8 @@ class KtpExtractor {
     String? rw;
     String? subDistrict;
     String? district;
+    String? province;
+    String? city;
     String? religion;
     String? marital;
     String? occupation;
@@ -111,6 +113,27 @@ class KtpExtractor {
     for (final block in recognizedText.blocks) {
       for (final line in block.lines) {
         final String text = line.text;
+
+        // Extract Province.
+        if (text.toLowerCase().startsWith('provinsi')) {
+          final lineText = text.cleanse('provinsi').filterNumberToAlphabet();
+          province = lineText;
+          if (kDebugMode) {
+            print('Text: $text');
+            print('Line Text: $lineText');
+          }
+        }
+        // Extract City.
+        if (text.toLowerCase().startsWith('kota') ||
+            text.toLowerCase().startsWith('kabupaten') ||
+            text.toLowerCase().startsWith('jakarta')) {
+          final lineText = text.filterNumberToAlphabet();
+          city = lineText;
+          if (kDebugMode) {
+            print('Text: $text');
+            print('Line Text: $lineText');
+          }
+        }
 
         // Extract NIK (Identity Number).
         if (nik == null && text.filterNumbersOnly().length == 16) {
@@ -312,6 +335,8 @@ class KtpExtractor {
       print('RT/RW: $rt / $rw');
       print('Sub-District: $subDistrict');
       print('District: $district');
+      print('Province: $province');
+      print('City: $city');
       print('Religion: $religion');
       print('Marital Status: $marital');
       print('Occupation: $occupation');
@@ -337,6 +362,8 @@ class KtpExtractor {
       rt: rt,
       rw: rw,
       subDistrict: subDistrict,
+      province: province,
+      city: city,
       validUntil: validUntil,
     );
   }

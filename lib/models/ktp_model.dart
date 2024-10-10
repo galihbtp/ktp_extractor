@@ -11,6 +11,8 @@ class KtpModel extends Equatable {
   final String? rw;
   final String? subDistrict;
   final String? district;
+  final String? province;
+  final String? city;
   final String? religion;
   final String? marital;
   final String? occupation;
@@ -28,6 +30,8 @@ class KtpModel extends Equatable {
     this.rw,
     this.subDistrict,
     this.district,
+    this.province,
+    this.city,
     this.religion,
     this.marital,
     this.occupation,
@@ -47,6 +51,8 @@ class KtpModel extends Equatable {
         rw,
         subDistrict,
         district,
+        province,
+        city,
         religion,
         marital,
         occupation,

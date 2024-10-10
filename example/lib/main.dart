@@ -73,6 +73,14 @@ class _MyAppState extends State<MyApp> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
+                    'Provinsi : ${_ktpModel!.province}',
+                    maxLines: null,
+                  ),
+                  Text(
+                    'Kota / Kabupaten : ${_ktpModel!.city}',
+                    maxLines: null,
+                  ),
+                  Text(
                     'NIK : ${_ktpModel!.nik}',
                     maxLines: null,
                   ),
