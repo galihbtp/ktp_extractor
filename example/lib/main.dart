@@ -35,7 +35,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Plugin example app'),
+        title: const Text('KTP Extractor Example App'),
       ),
       body: ListView(
         children: [
@@ -68,68 +68,68 @@ class _MyAppState extends State<MyApp> {
           ),
           if (_ktpModel != null)
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Provinsi : ${_ktpModel!.province}',
+                    'Provinsi : ${_ktpModel!.province ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    'Kota / Kabupaten : ${_ktpModel!.city}',
+                    'Kota / Kabupaten : ${_ktpModel!.city ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    'NIK : ${_ktpModel!.nik}',
+                    'NIK : ${_ktpModel!.nik ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    'Nama : ${_ktpModel!.name}',
+                    'Nama : ${_ktpModel!.name ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    'Tempat Lahir : ${_ktpModel!.placeBirth}',
+                    'Tempat Lahir : ${_ktpModel!.placeBirth ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    'Tanggal Lahir : ${_ktpModel!.birthDay}',
+                    'Tanggal Lahir : ${_ktpModel!.birthDay ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    'Alamat : ${_ktpModel!.address}',
+                    'Alamat : ${_ktpModel!.address ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    '\t\t\tRT / RW : ${_ktpModel!.rt} / ${_ktpModel!.rw}',
+                    '\t\t\tRT / RW : ${_ktpModel!.rt} / ${_ktpModel!.rw ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    '\t\t\tKel/Desa : ${_ktpModel!.subDistrict}',
+                    '\t\t\tKel/Desa : ${_ktpModel!.subDistrict ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    '\t\t\tKecamatan : ${_ktpModel!.district}',
+                    '\t\t\tKecamatan : ${_ktpModel!.district ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    'Agama : ${_ktpModel!.religion}',
+                    'Agama : ${_ktpModel!.religion ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    'Status Perkawinan : ${_ktpModel!.marital}',
+                    'Status Perkawinan : ${_ktpModel!.marital ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    'Pekerjaan : ${_ktpModel!.occupation}',
+                    'Pekerjaan : ${_ktpModel!.occupation ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    'Kewarganegaraan : ${_ktpModel!.nationality}',
+                    'Kewarganegaraan : ${_ktpModel!.nationality ?? '-'}',
                     maxLines: null,
                   ),
                   Text(
-                    'Berlaku Hingga : ${_ktpModel!.validUntil}',
+                    'Berlaku Hingga : ${_ktpModel!.validUntil ?? '-'}',
                     maxLines: null,
                   ),
                 ],
