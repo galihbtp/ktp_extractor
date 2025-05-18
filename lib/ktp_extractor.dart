@@ -198,47 +198,68 @@ class KtpExtractor {
             text.toLowerCase().contains(RegExp('tgl')) ||
             text.toLowerCase().contains(RegExp('lahir'))) {
           if (kDebugMode) {
-            print('Text: $text');
+            print('Birth info detected: $text');
           }
 
-          final isOnlineFormat =
-              text.toLowerCase().contains('tgl.lahir') || text.contains('.');
-          if (isOnlineFormat) {
-            // Online KTP format
-            placeBirth = text.split(':').last.trim(); // Get text after colon
+          // --- Step 1: Try Physical KTP Format ---
+          String? lineText =
+              recognizedText.findAndClean(line, 'tempat/tgl lahir');
+          if (lineText != null) {
+            lineText = lineText
+                .cleanse('tempat')
+                .cleanse('tgl lahir')
+                .replaceAll('/', '');
 
-            // Look for date in next lines (format: xx-xx-xxxx)
-            final nextLines = _getNextLines(recognizedText, line);
-            for (final nextLine in nextLines) {
-              final datePattern = RegExp(r'\d{2}-\d{2}-\d{4}');
-              if (datePattern.hasMatch(nextLine.text)) {
-                birthDay = nextLine.text.trim();
-                break;
-              }
-            }
-          } else {
-            String? lineText =
-                recognizedText.findAndClean(line, 'tempat/tgl lahir');
-            if (lineText != null) {
-              lineText = lineText.cleanse('tempat');
-              lineText = lineText.cleanse('tgl lahir');
-              if (lineText.split('/').isNotEmpty) {
-                lineText = lineText.replaceAll('/', '');
-              }
-            }
-            final List<String> splitBirth = lineText?.split(',') ?? [];
-            if (kDebugMode) {
-              print('Split Place of Birth: $splitBirth');
-            }
+            final List<String> splitBirth = lineText.split(',');
             if (splitBirth.isNotEmpty) {
-              placeBirth = splitBirth[0].filterNumberToAlphabet();
-              if (splitBirth.length > 1) {
-                birthDay = splitBirth[1].filterAlphabetToNumber();
+              // Case: Malformed label (e.g., "TempatTg Lahir : Bekasi" → ["TglLahir", "Bekasi"])
+              if (splitBirth.length == 2 &&
+                  !splitBirth[1].contains(RegExp(r'\d'))) {
+                placeBirth =
+                    splitBirth[1].filterNumberToAlphabet(); // Take "Bekasi"
+
+                // Check next line for date (like Online KTP)
+                final nextLines = _getNextLines(recognizedText, line);
+                for (final nextLine in nextLines) {
+                  final datePattern = RegExp(r'\d{2}[-\s/]\d{2}[-\s/]\d{4}');
+                  if (datePattern.hasMatch(nextLine.text)) {
+                    birthDay = nextLine.text.trim();
+                    break;
+                  }
+                }
+              }
+              // Default Physical KTP logic
+              else {
+                placeBirth = splitBirth[0].filterNumberToAlphabet();
+                if (splitBirth.length > 1) {
+                  birthDay = splitBirth[1].filterAlphabetToNumber();
+                }
               }
             }
+          }
 
-            if (kDebugMode) {
-              print('Line Text: $lineText');
+          // --- Step 2: Fallback to Online KTP if Physical KTP fails ---
+          if (birthDay == null) {
+            // Check if the line has a label (flexible for merged/split colons)
+            final hasLabel = text.toLowerCase().contains('tempat') &&
+                text.toLowerCase().contains('lahir');
+
+            if (hasLabel) {
+              // Extract place of birth (handle "TempatTg Lahir:<city>" or "TempatTg Lahir : <city>")
+              placeBirth = text
+                  .split(RegExp(r':|\s')) // Split on ':' or whitespace
+                  .lastWhere((part) => part.trim().isNotEmpty)
+                  .trim();
+
+              // Search next lines for date (xx-xx-xxxx, xx/xx/xxxx, etc.)
+              final nextLines = _getNextLines(recognizedText, line);
+              for (final nextLine in nextLines) {
+                final datePattern = RegExp(r'\d{2}[-\s/]\d{2}[-\s/]\d{4}');
+                if (datePattern.hasMatch(nextLine.text)) {
+                  birthDay = nextLine.text.trim();
+                  break;
+                }
+              }
             }
           }
         }

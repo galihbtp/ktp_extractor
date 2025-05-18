@@ -18,7 +18,8 @@ extension TextLineExt on RecognizedText {
 
     for (final block in blocks) {
       for (final textLine in block.lines) {
-        final centerY = (textLine.boundingBox.bottom + textLine.boundingBox.top) / 2;
+        final centerY =
+            (textLine.boundingBox.bottom + textLine.boundingBox.top) / 2;
 
         if (centerY >= top && centerY <= bottom && textLine.text != line.text) {
           result.add(textLine);
@@ -83,7 +84,8 @@ extension StringExtension on String {
         .replaceAll('4', 'A')
         .replaceAll('5', 'S')
         .replaceAll('7', 'T')
-        .replaceAll('8', 'B');
+        .replaceAll('8', 'B')
+        .replaceAll('9', 'B');
   }
 
   String filterAlphabetToNumber() {
