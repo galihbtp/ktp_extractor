@@ -20,7 +20,14 @@ class KtpExtractor {
   /// A map of expected words for certain fields to assist in data correction.
   static final Map<String, List<String>> _expectedWords = {
     _genderKey: ['LAKI-LAKI', 'PEREMPUAN'],
-    _religionKey: ['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KHONGHUCU'],
+    _religionKey: [
+      'ISLAM',
+      'KRISTEN',
+      'KATOLIK',
+      'HINDU',
+      'BUDDHA',
+      'KHONGHUCU'
+    ],
     _maritalKey: ['KAWIN', 'BELUM KAWIN'],
     _nationalityKey: ['WNI', 'WNA'],
   };
@@ -33,8 +40,8 @@ class KtpExtractor {
   ///
   /// [imageFile]: The image file containing the KTP.
   static Future<File?> cropImageForKtp(File imageFile) async {
-    final modelPath =
-        await getAssetPath('packages/ktp_extractor/assets/custom_models/object_labeler.tflite');
+    final modelPath = await getAssetPath(
+        'packages/ktp_extractor/assets/custom_models/object_labeler.tflite');
 
     final options = LocalObjectDetectorOptions(
       mode: DetectionMode.single,
@@ -74,7 +81,8 @@ class KtpExtractor {
   static Future<KtpModel> extractKtp(File imageFile) async {
     final TextRecognizer recognizer = TextRecognizer();
     final InputImage inputImage = InputImage.fromFile(imageFile);
-    final RecognizedText recognizedText = await recognizer.processImage(inputImage);
+    final RecognizedText recognizedText =
+        await recognizer.processImage(inputImage);
     await recognizer.close();
 
     return extractFromOcr(recognizedText);
@@ -104,6 +112,7 @@ class KtpExtractor {
     String? occupation;
     String? nationality;
     String? validUntil;
+    bool expectingBirthDateOnNextLine = false;
 
     if (kDebugMode) {
       print('Result text: ${recognizedText.text}');
@@ -155,7 +164,9 @@ class KtpExtractor {
 
         // Extract Name.
         if (text.toLowerCase().startsWith('nama')) {
-          final lineText = recognizedText.findAndClean(line, 'nama')?.filterNumberToAlphabet();
+          final lineText = recognizedText
+              .findAndClean(line, 'nama')
+              ?.filterNumberToAlphabet();
           name = lineText;
           if (kDebugMode) {
             print('Text: $text');
@@ -164,32 +175,44 @@ class KtpExtractor {
         }
 
         // Extract Place and Date of Birth.
-        if (text.toLowerCase().contains(RegExp('tempat')) &&
-            text.toLowerCase().contains(RegExp('lahir'))) {
-          if (kDebugMode) {
-            print('Text: $text');
-          }
-          String? lineText = recognizedText.findAndClean(line, 'tempat/tgl lahir');
-          if (lineText != null) {
-            lineText = lineText.cleanse('tempat');
-            lineText = lineText.cleanse('tgl lahir');
-            if (lineText.split('/').isNotEmpty) {
-              lineText = lineText.replaceAll('/', '');
+        final isTempatTglLine =
+            RegExp(r'tempat\s*[\/|]?\s*tgl[.\s]*lahir', caseSensitive: false)
+                .hasMatch(text);
+
+        if (isTempatTglLine) {
+          // Extract content after ':', if present
+          final content =
+              text.split(':').length > 1 ? text.split(':')[1].trim() : '';
+
+          if (content.contains(',')) {
+            // PHYSICAL KTP format: e.g. "BEKASI, 12-12-1990"
+            final split = content.split(',').map((e) => e.trim()).toList();
+            placeBirth = split[0].filterNumberToAlphabet();
+            if (split.length > 1) {
+              birthDay = split[1].filterAlphabetToNumber();
+            }
+            if (kDebugMode) {
+              print('[Physical KTP] Place: $placeBirth, BirthDay: $birthDay');
+            }
+          } else {
+            // ONLINE KTP format: wait for the next line to contain the date
+            placeBirth = content.filterNumberToAlphabet();
+            expectingBirthDateOnNextLine = true;
+
+            if (kDebugMode) {
+              print(
+                  '[Online KTP] Detected place only: $placeBirth. Awaiting birthdate...');
             }
           }
-          final List<String> splitBirth = lineText?.split(',') ?? [];
-          if (kDebugMode) {
-            print('Split Place of Birth: $splitBirth');
-          }
-          if (splitBirth.isNotEmpty) {
-            placeBirth = splitBirth[0].filterNumberToAlphabet();
-            if (splitBirth.length > 1) {
-              birthDay = splitBirth[1].filterAlphabetToNumber();
+        } else if (expectingBirthDateOnNextLine) {
+          // Second line of online KTP — contains only the date
+          if (RegExp(r'\d{2}[-/]\d{2}[-/]\d{4}').hasMatch(text)) {
+            birthDay = text.filterAlphabetToNumber();
+            if (kDebugMode) {
+              print('[Online KTP] Detected birthdate: $birthDay');
             }
           }
-          if (kDebugMode) {
-            print('Line Text: $lineText');
-          }
+          expectingBirthDateOnNextLine = false;
         }
 
         // Extract Gender.
@@ -230,7 +253,8 @@ class KtpExtractor {
             }
           }
           final List<String> splitRtRw =
-              lineText?.filterAlphabetToNumber().removeAlphabet().split('/') ?? [];
+              lineText?.filterAlphabetToNumber().removeAlphabet().split('/') ??
+                  [];
           if (kDebugMode) {
             print('Split RT/RW: $splitRtRw');
           }
@@ -273,7 +297,9 @@ class KtpExtractor {
         // Extract Religion.
         if (text.toLowerCase().startsWith('agama')) {
           final lineText = recognizedText.findAndClean(line, 'agama');
-          religion = lineText?.filterNumberToAlphabet().correctWord(_expectedWords[_religionKey]!);
+          religion = lineText
+              ?.filterNumberToAlphabet()
+              .correctWord(_expectedWords[_religionKey]!);
           if (kDebugMode) {
             print('Text: $text');
             print('Line Text: $lineText');
@@ -282,8 +308,11 @@ class KtpExtractor {
 
         // Extract Marital Status.
         if (text.toLowerCase().startsWith('status perkawinan')) {
-          final lineText = recognizedText.findAndClean(line, 'status perkawinan');
-          marital = lineText?.filterNumberToAlphabet().correctWord(_expectedWords[_maritalKey]!);
+          final lineText =
+              recognizedText.findAndClean(line, 'status perkawinan');
+          marital = lineText
+              ?.filterNumberToAlphabet()
+              .correctWord(_expectedWords[_maritalKey]!);
           if (kDebugMode) {
             print('Text: $text');
             print('Line Text: $lineText');
@@ -303,8 +332,9 @@ class KtpExtractor {
         // Extract Nationality.
         if (text.toLowerCase().startsWith('kewarganegaraan')) {
           final lineText = recognizedText.findAndClean(line, 'kewarganegaraan');
-          nationality =
-              lineText?.filterNumberToAlphabet().correctWord(_expectedWords[_nationalityKey]!);
+          nationality = lineText
+              ?.filterNumberToAlphabet()
+              .correctWord(_expectedWords[_nationalityKey]!);
           if (kDebugMode) {
             print('Text: $text');
             print('Line Text: $lineText');
