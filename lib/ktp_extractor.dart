@@ -32,6 +32,26 @@ class KtpExtractor {
     _nationalityKey: ['WNI', 'WNA'],
   };
 
+  static List<TextLine> _getNextLines(
+      RecognizedText recognizedText, TextLine currentLine) {
+    final nextLines = <TextLine>[];
+    bool foundCurrent = false;
+
+    for (final block in recognizedText.blocks) {
+      for (final line in block.lines) {
+        if (line == currentLine) {
+          foundCurrent = true;
+          continue;
+        }
+        if (foundCurrent) {
+          nextLines.add(line);
+        }
+      }
+    }
+
+    return nextLines;
+  }
+
   /// Crops the KTP area from the provided image using object detection.
   ///
   /// This method uses a custom TensorFlow Lite model to detect and crop the KTP
@@ -112,7 +132,6 @@ class KtpExtractor {
     String? occupation;
     String? nationality;
     String? validUntil;
-    bool expectingBirthDateOnNextLine = false;
 
     if (kDebugMode) {
       print('Result text: ${recognizedText.text}');
@@ -175,44 +194,53 @@ class KtpExtractor {
         }
 
         // Extract Place and Date of Birth.
-        final isTempatTglLine =
-            RegExp(r'tempat\s*[\/|]?\s*tgl[.\s]*lahir', caseSensitive: false)
-                .hasMatch(text);
+        if (text.toLowerCase().contains(RegExp('tempat')) ||
+            text.toLowerCase().contains(RegExp('tgl')) ||
+            text.toLowerCase().contains(RegExp('lahir'))) {
+          if (kDebugMode) {
+            print('Text: $text');
+          }
 
-        if (isTempatTglLine) {
-          // Extract content after ':', if present
-          final content =
-              text.split(':').length > 1 ? text.split(':')[1].trim() : '';
+          final isOnlineFormat =
+              text.toLowerCase().contains('tgl.lahir') || text.contains('.');
+          if (isOnlineFormat) {
+            // Online KTP format
+            placeBirth = text.split(':').last.trim(); // Get text after colon
 
-          if (content.contains(',')) {
-            // PHYSICAL KTP format: e.g. "BEKASI, 12-12-1990"
-            final split = content.split(',').map((e) => e.trim()).toList();
-            placeBirth = split[0].filterNumberToAlphabet();
-            if (split.length > 1) {
-              birthDay = split[1].filterAlphabetToNumber();
-            }
-            if (kDebugMode) {
-              print('[Physical KTP] Place: $placeBirth, BirthDay: $birthDay');
+            // Look for date in next lines (format: xx-xx-xxxx)
+            final nextLines = _getNextLines(recognizedText, line);
+            for (final nextLine in nextLines) {
+              final datePattern = RegExp(r'\d{2}-\d{2}-\d{4}');
+              if (datePattern.hasMatch(nextLine.text)) {
+                birthDay = nextLine.text.trim();
+                break;
+              }
             }
           } else {
-            // ONLINE KTP format: wait for the next line to contain the date
-            placeBirth = content.filterNumberToAlphabet();
-            expectingBirthDateOnNextLine = true;
+            String? lineText =
+                recognizedText.findAndClean(line, 'tempat/tgl lahir');
+            if (lineText != null) {
+              lineText = lineText.cleanse('tempat');
+              lineText = lineText.cleanse('tgl lahir');
+              if (lineText.split('/').isNotEmpty) {
+                lineText = lineText.replaceAll('/', '');
+              }
+            }
+            final List<String> splitBirth = lineText?.split(',') ?? [];
+            if (kDebugMode) {
+              print('Split Place of Birth: $splitBirth');
+            }
+            if (splitBirth.isNotEmpty) {
+              placeBirth = splitBirth[0].filterNumberToAlphabet();
+              if (splitBirth.length > 1) {
+                birthDay = splitBirth[1].filterAlphabetToNumber();
+              }
+            }
 
             if (kDebugMode) {
-              print(
-                  '[Online KTP] Detected place only: $placeBirth. Awaiting birthdate...');
+              print('Line Text: $lineText');
             }
           }
-        } else if (expectingBirthDateOnNextLine) {
-          // Second line of online KTP — contains only the date
-          if (RegExp(r'\d{2}[-/]\d{2}[-/]\d{4}').hasMatch(text)) {
-            birthDay = text.filterAlphabetToNumber();
-            if (kDebugMode) {
-              print('[Online KTP] Detected birthdate: $birthDay');
-            }
-          }
-          expectingBirthDateOnNextLine = false;
         }
 
         // Extract Gender.
