@@ -155,7 +155,17 @@ class KtpExtractor {
         if (text.toLowerCase().startsWith('kota') ||
             text.toLowerCase().startsWith('kabupaten') ||
             text.toLowerCase().startsWith('jakarta')) {
-          final lineText = text.filterNumberToAlphabet();
+          var lineText = text.filterNumberToAlphabet();
+
+          // Normalize KOTA/KABUPATEN prefix with a space if missing
+          final prefixes = ['KOTA', 'KABUPATEN', 'JAKARTA'];
+          for (final prefix in prefixes) {
+            if (lineText.toUpperCase().startsWith(prefix) &&
+                !lineText.toUpperCase().startsWith('$prefix ')) {
+              lineText = lineText.replaceFirst(prefix, '$prefix ');
+            }
+          }
+
           city = lineText;
           if (kDebugMode) {
             print('Text: $text');
